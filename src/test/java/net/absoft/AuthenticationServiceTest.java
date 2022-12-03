@@ -7,49 +7,58 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.absoft.data.Response;
 import net.absoft.services.AuthenticationService;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
 
-public class AuthenticationServiceTest {
+public class AuthenticationServiceTest extends BaseTestPositive {
+  private Response authenticationServiceGoalPositive;
 
-  @Test
+  @BeforeMethod(
+          groups = "Positive"
+  )
+  public void setUp() {
+    authenticationServiceGoalPositive = new AuthenticationService().authenticate("user1@test.com", "password1");
+    System.out.println("Preconditions Positive");
+  }
+
+  @Test(
+          groups = "Positive"
+  )
   public void testSuccessfulAuthentication() {
-    Response response = new AuthenticationService().authenticate("user1@test.com", "password1");
+    Response response =authenticationServiceGoalPositive;
     assertEquals(response.getCode(), 200, "Response code should be 200");
     assertTrue(validateToken(response.getMessage()),
-        "Token should be the 32 digits string. Got: " + response.getMessage());
+            "Token should be the 32 digits string. Got: " + response.getMessage());
   }
 
-  @Test
-  public void testAuthenticationWithWrongPassword() {
-    Response response = new AuthenticationService()
-        .authenticate("user1@test.com", "wrong_password1");
-    assertEquals(response.getCode(), 401, "Response code should be 401");
-    assertEquals(response.getMessage(), "Invalid email or password",
-        "Response message should be \"Invalid email or password\"");
-  }
 
-  @Test
-  public void testAuthenticationWithEmptyEmail() {
-    Response response = new AuthenticationService().authenticate("", "password1");
-    assertEquals(response.getCode(), 400, "Response code should be 400");
-    assertEquals(response.getMessage(), "Email should not be empty string",
-        "Response message should be \"Email should not be empty string\"");
-  }
+  @DataProvider(name ="invalidCredentials", parallel = true)
+  public Object[][] generateInvalidCredentials(){
+  return new Object[][]{
+          new Object[]{"user1@test.com", "wrong_password1",
+            new Response(401, "Invalid email or password")},
+          new Object[]{"", "wrong_password1",
+            new Response(400, "Email should not be empty string")},
+          new Object[]{"user1@test.com", "",
+            new Response(400, "Password should not be empty string")},
+          new Object[]{"user1", "wrong_password1",
+            new Response(400, "Invalid email")}
 
-  @Test
-  public void testAuthenticationWithInvalidEmail() {
-    Response response = new AuthenticationService().authenticate("user1", "password1");
-    assertEquals(response.getCode(), 400, "Response code should be 200");
-    assertEquals(response.getMessage(), "Invalid email",
-        "Response message should be \"Invalid email\"");
-  }
+  };
+}
 
-  @Test
-  public void testAuthenticationWithEmptyPassword() {
-    Response response = new AuthenticationService().authenticate("user1@test", "");
-    assertEquals(response.getCode(), 400, "Response code should be 400");
-    assertEquals(response.getMessage(), "Password should not be empty string",
-        "Response message should be \"Password should not be empty string\"");
+  @Test(
+          groups = "Negative",
+          dataProvider = "invalidCredentials"
+  )
+  public void testAuthenticationWithWrongCredentials(String email, String password, Response expectedResponse) {
+    Response actualResponse = new AuthenticationService().authenticate(email, password);
+    SoftAssert softAssert = new SoftAssert();
+    softAssert.assertEquals(actualResponse, expectedResponse, "Unexpected response");
+    softAssert.assertAll();
   }
 
   private boolean validateToken(String token) {

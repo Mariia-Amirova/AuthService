@@ -15,5 +15,28 @@ dependencies {
 }
 
 test {
-    useTestNG()
+    println ("All Tests")
+    useTestNG(){
+        suites "src/test/resources/suites/AllTestsSuite.xml"
+        if (System.properties["group"] != null) {
+            println(System.properties["group"])
+            includeGroups System.properties["group"]
+        }
+    }
+}
+
+task positiveTest(type: Test) {
+    println ("Positive Tests")
+    useTestNG(){
+        suites "src/test/resources/suites/PositiveTestsSuite.xml"
+
+    }
+}
+
+task negativeTest(type: Test) {
+    println ("Negative Tests")
+    useTestNG(){
+        suites "src/test/resources/suites/NegativeTestsSuite.xml"
+
+    }
 }
